@@ -5,6 +5,7 @@ var $ = require('gulp-load-plugins')();
 var autoprefixer = require('autoprefixer');
 var yaml = require('js-yaml');
 var fs = require('fs');
+var imagemin = require('gulp-imagemin');
 
 var {
   COMPATIBILITY,
@@ -15,6 +16,7 @@ var {
   UNCSS_OPTIONS,
   PATHS,
 } = loadConfig();
+
 function loadConfig() {
   var ymlFile = fs.readFileSync('config.yml', 'utf8');
   return yaml.load(ymlFile);
@@ -35,6 +37,15 @@ function sass() {
     .pipe(browserSync.stream());
 }
 
+// Copy images to the "dist" folder
+// In production, the images are compressed
+function images() {
+  return gulp
+    .src(PATHS.ImgSrc + '/*')
+    .pipe(imagemin())
+    .pipe(gulp.dest(PATHS.ImgDest));
+}
+
 function serve() {
   browserSync.init({
     //server: './',
@@ -45,5 +56,6 @@ function serve() {
 }
 
 gulp.task('sass', sass);
+gulp.task('images', images);
 gulp.task('serve', gulp.series('sass', serve));
 gulp.task('default', gulp.series('sass', serve));
