@@ -1,4 +1,5 @@
 //@format
+var sourcemaps = require('gulp-sourcemaps');
 var gulp = require('gulp');
 var browserSync = require('browser-sync').create();
 var $ = require('gulp-load-plugins')();
@@ -25,15 +26,17 @@ function loadConfig() {
 
 function sass() {
   return gulp
-    .src(PATHS.ScssDir + '/' + PATHS.ScssFileName)
+    .src(PATHS.Scss.Dir + '/' + PATHS.Scss.FileName, {sourcemaps: true})
+    .pipe(sourcemaps.init())
     .pipe(
       $.sass({
-        includePaths: PATHS.ScssLibraries,
+        includePaths: PATHS.Scss.Libraries,
         outputStyle: 'compressed', // if css compressed **file size**
       }).on('error', $.sass.logError),
     )
     .pipe($.postcss([autoprefixer()]))
-    .pipe(gulp.dest(PATHS.CssFileDir))
+    .pipe(sourcemaps.write())
+    .pipe(gulp.dest(PATHS.Css.Dir))
     .pipe(browserSync.stream());
 }
 
@@ -41,21 +44,39 @@ function sass() {
 // In production, the images are compressed
 function images() {
   return gulp
-    .src(PATHS.ImgSrc + '/*')
+    .src(PATHS.Img.Src + '/*')
     .pipe(imagemin())
-    .pipe(gulp.dest(PATHS.ImgDest));
+    .pipe(gulp.dest(PATHS.Img.Dest));
 }
 
-function serve() {
+function remoteProxy() {
   browserSync.init({
-    //server: './',
-    proxy: LOCALPROXY,
+    serveStatic: ['.'],
+    proxy: SITE.Remote,
+    startPath: SITE.Remote.StartPath,
+    injectChanges: true,
+    files: ['css/*.css', 'js/*.js'],
+    plugins: ['bs-rewrite-rules'],
+    rewriteRules: [
+      {
+        match: BSREWRITE.Css.Match,
+        replace: BSREWRITE.Css.Replace,
+      },
+      {
+        match: BSREWRITE.Js.Match,
+        replace: BSREWRITE.Js.Replace,
+      },
+    ],
   });
+}
 
+function watch() {
   gulp.watch(PATHS.ScssDir + '/*.scss', sass);
 }
 
 gulp.task('sass', sass);
 gulp.task('images', images);
-gulp.task('serve', gulp.series('sass', serve));
-gulp.task('default', gulp.series('sass', serve));
+gulp.task('remoteProxy', remoteProxy);
+gulp.task('watch', watch);
+
+gulp.task('default', gulp.series('sass', 'images', 'remoteProxy', 'watch'));
